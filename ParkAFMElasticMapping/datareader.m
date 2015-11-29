@@ -61,6 +61,8 @@ for itr = 1:length({File.name})
         % store matched filenames in a specified folder
         Filename(index_count) = {File(itr).name}; 
         index_count = index_count + 1;
+    elseif ~isempty( regexp(File(itr).name,'^.+Spectroscopy-\d{3}_glass_\d{4}\.txt','match') )
+        glass_ref_filename = File(itr).name;
     else
         if isempty( regexp(File(itr).name,'^.+Spectroscopy.+info\.txt','match') )
             image_ref_filename = File(itr).name;
@@ -75,6 +77,15 @@ end
 %% ### Elastic Modulus Extraction ###
 % for in_depth = 100:10:300
 % fprintf('fit: %i \n',in_depth);    
+cd(DataLocation);
+
+% read data from the specified file
+[gidx gZScan gZDetector gForce] = textread(glass_ref_filename,...
+    '%u %f %f %f', 'headerlines', 3, 'whitespace', '\t');
+
+cd(AlgorithmLocation);              % move to the algorithm directory
+[g_elastic_modulus gR2 g_init_con] = elastic_subtraction(gZDetector, gForce);
+
 for itr = 1:numPoint
 cd(DataLocation);                   % move to the data directory
 LoadFile = Filename{itr};           % current filename 
@@ -92,7 +103,7 @@ LoadFile = Filename{itr};           % current filename
 cd(AlgorithmLocation);              % move to the algorithm directory
 
 % extract elastic modulus of the specified data 
-[elastic_modulus R2 ub] = elastic_subtraction(ZDetector, Force);
+[elastic_modulus R2 init_con] = elastic_subtraction(ZDetector, Force);
 %elastic_modulus = CPD(Zdist,subtF,0.06,lowerb_contact,v,'cone',alpha);
 %clear ZDetector Force 
 
@@ -101,7 +112,7 @@ cd(AlgorithmLocation);              % move to the algorithm directory
 %elastic_map(Px,Py) = elastic_modulus; % fill the elastic modulus to a map
 elastic_map(itr,1) = elastic_modulus;
 error_map(itr,1) = R2;
-indent_map(itr,1) = ub;
+contact_map(itr,1) = init_con-g_init_con;
 
 fprintf(' data No#: %i /%i \n',itr,numPoint);
 
@@ -110,15 +121,27 @@ end
 %% ### Plot the Results ###
 fimage = flipimage(elastic_map);% rescale to log(E)
 eimage = flipimage(error_map);
-iimage = flipimage(indent_map);
+iimage = flipimage(contact_map);
+
+
+figure()
+imagesc(fimage);
+surf_elastic = imcrop;
+close all
+
+thresh_surf = min(min(surf_elastic));
+fnimage = fimage;
+%fnimage(eimage < 0.5) = NaN;
+fnimage(fimage > thresh_surf) = NaN;
 
 % fstack(:,:, (in_depth-90)/10 ) = fimage;
 % estack(:,:,(in_depth-90)/10 ) = eimage;
 
 figure()
-subplot(1,3,1); imagesc(fimage); daspect([1 1 1]);     
-%subplot(1,3,2); imagesc(eimage); daspect([1 1 1]);
-%subplot(1,3,3); imagesc(iimage); daspect([1 1 1]);
+subplot(1,3,1); im1 = pcolor(fnimage); 
+daspect([1 1 1]); set(im1, 'edgecolor', 'none')    
+subplot(1,3,2); imagesc(eimage); daspect([1 1 1]);
+subplot(1,3,3); imagesc(iimage); daspect([1 1 1]);
 
 %set(gca, 'YTickLabel', num2str(coor_y));    % real scale
 %set(gca, 'XTickLabel', num2str(coor_x));    % real scale
@@ -132,6 +155,7 @@ subplot(1,3,1); imagesc(fimage); daspect([1 1 1]);
 %save(['edat_' num2str(in_depth) '.mat'],'fimage');
 %close
 % end
+
 
 
 

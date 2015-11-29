@@ -1,4 +1,4 @@
-function [E R2 ub] = CPD(z,defl,k,G,nu,model_geo,model_para)
+function [E R2 CP_fit_1] = CPD(z,defl,k,G,nu,model_geo,model_para)
  
 %%_______________________________________________________________________%%
 % CPD function is a MATLAB function based on the Contact Point Detection 
@@ -38,7 +38,7 @@ end
 if all(z) == 0 && all(defl) == 0
     E = 0;
     R2 = 0;
-    ub = 0;
+    CP_fit_1 = 0;
 end
 
 % % Convert data to nanometers and correct for constant compliance
@@ -78,7 +78,7 @@ minDefl = z(zero_defl == min(zero_defl));
 if size(maxDefl,1) == 0
    E = 0;
    R2 = 0;
-   ub = 0;
+   CP_fit_1=0;
    return
 end
 
@@ -102,7 +102,7 @@ end
 if exist('P','var') == 0
    E = 0;
    R2 = 0;
-   ub = 0;
+   CP_fit_1=0;
    return
 end
 
@@ -169,12 +169,12 @@ guess = [Ini_guess zero_sep(P)];
 if isnan(CP_fit_1)
    E = 0;
    R2 = 0;
-   ub = 0;
+   CP_fit_1 = 0;
    return
 elseif or(CP_fit_1 >= max(zero_sep), CP_fit_1 < min(zero_sep))
    E = 0;
    R2 = 0;
-   ub = 0;
+   CP_fit_1 = 0;
    return
 end
 
