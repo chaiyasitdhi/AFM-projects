@@ -1,4 +1,4 @@
-% ################### Park AFM Stiffness Mapping 1.0 #####################
+% ################### Park AFM Stiffness Mapping 1.1 #####################
 % ####################### by Atitheb Chaiyasitdhi ########################
 % ########### King's Mongkut University of Technology Thonburi ###########
 % ################### create : 21-09-2015 ################################
@@ -30,7 +30,15 @@ deflUnit = 10e-6;       % delfection unit in micron (10e-6)
 % to export image file into the data directory
 show_image = 0; % 0 = not show, 1 = show
 
-% 6.) Run this MATLAB script (Press F5)
+% 6.) Colorbar range setting
+init_colorbar = 1; % N/m
+final_colorbar = 4; % N/m
+
+% 7.) Fitting range setting (in percent)
+init_data_range = 10; % in percent
+final_data_range = 90; % in percent 
+
+% 8.) Run this MATLAB script (Press F5)
 
 % #######################################################################
 % #######################################################################
@@ -73,29 +81,12 @@ dimY = abs( PositionY(end)-PositionY(1) );
 
 File = dir('*.txt');    % acquire filenames with *.txt
 index_count = 1;
-% for itr = 1:length({File.name})
-%     % check if filename matches default format with regular expression
-%     if ~isempty( regexp(File(itr).name,'^\d{6}\D+Spectroscopy.+_\d{2,3}\.txt','match') )
-%         % store matched filenames in a specified folder
-%         Filename(index_count) = {File(itr).name}; 
-%         index_count = index_count + 1;
-%     else
-%         if isempty( regexp(File(itr).name,'^\d{6}\D+Spectroscopy.+info\.txt','match') )
-%             image_ref_filename = File(itr).name;
-%         end
-%     end
-% end
 
 for itr = 1:length({File.name})
-    % check if filename matches default format with regular expression
-    if ~isempty( regexp(File(itr).name,'^S\d{1}\.tiff_\d{3}\.txt','match') )
-        % store matched filenames in a specified folder
-        Filename(index_count) = {File(itr).name}; 
-        index_count = index_count + 1;
+    if ~isempty( regexp(File(itr).name,'^^S\d{1}\.tiff_info\.txt','match') )
+        image_ref_filename = File(itr).name;
     else
-        if isempty( regexp(File(itr).name,'^^S\d{1}\.tiff_info\.txt','match') )
-            image_ref_filename = File(itr).name;
-        end
+        Filename{itr} = File(itr).name;
     end
 end
 
@@ -113,7 +104,7 @@ rsq = zeros(1,numPoint);
 % #######################################################################
 % #######################################################################
    
-%% ##################### Elastic Modulus Extraction #####################
+%% ##################### Stiffness Extraction #####################
 % #######################################################################
 
 for itr = 1:numPoint
@@ -131,7 +122,8 @@ cd(DataLocation)                % move to the data directory
 
 cd(AlgorithmLocation);      % move to the algorithm directory
 % fitting by using linear regression with a slope_fit function
-[stiffness(1,itr), rsq(1,itr)] = slope_fit(ZDetector.*deflUnit, Force.*forceUnit);
+[stiffness(1,itr), rsq(1,itr)] = slope_fit(ZDetector.*deflUnit, Force.*forceUnit,...
+    init_data_range, final_data_range);
 
 % print out "current_index/total_index"
 fprintf(' data No#: %i /%i \n',itr,numPoint); 
@@ -183,6 +175,8 @@ imagesc(stiffness_map); title('Stiffness Map');
 xlabel('Pixel');
 ylabel('Pixel');
 c1 = colorbar; ylabel(c1, 'N/m');
+set(gca, 'CLim', [init_colorbar, final_colorbar]); 
+% setting a range of colorbar
 daspect([1 1 1]);
 
 figure()

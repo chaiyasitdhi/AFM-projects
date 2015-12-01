@@ -1,4 +1,4 @@
-function [slopeF, rsq] = slope_fit(ZDetector,Force)
+function [slopeF, rsq] = slope_fit(ZDetector,Force, init, final)
 % choose only an approaching curve
 zDist = ZDetector(1: length(ZDetector)/2); %Z distance
 force = Force(1: length(Force)/2); %force
@@ -17,6 +17,14 @@ FinalPos = overThresholdPos(end);   % final position
 % extract data by using initial and final position
 nForce = force(ThresholdPos:FinalPos);
 nzDist = zDist(ThresholdPos:FinalPos);
+
+% choosing data range
+nForce = nForce(round( length(nForce)*init/100 ): round( length(nForce)*final/100 ) );
+nzDist = nzDist(round( length(nzDist)*init/100 ): round( length(nzDist)*final/100 ) );
+
+plot(nzDist, nForce ,'o'); hold on;
+plot(nzDist (round( length(nzDist)*init/100) )*ones(1,20),linspace(min(nForce), max(nForce), 20) );
+plot(nzDist (round( length(nzDist)*final/100) )*ones(1,20),linspace(min(nForce), max(nForce), 20) );
 
 % fitting with a linear regression model
 fit_params = polyfit(nzDist,nForce,1);
