@@ -2,7 +2,7 @@
 % ####################### by Atitheb Chaiyasitdhi ########################
 % ########### King's Mongkut University of Technology Thonburi ###########
 % ################### create : 21-09-2015 ################################
-% ################### update : 22-09-2015 ################################
+% ################### update : 01-12-2015 ################################
 
 clear
 clc
@@ -35,10 +35,13 @@ init_colorbar = 1; % N/m
 final_colorbar = 4; % N/m
 
 % 7.) Fitting range setting (in percent)
-init_data_range = 10; % in percent
+init_data_range = 20; % in percent
 final_data_range = 90; % in percent 
 
-% 8.) Run this MATLAB script (Press F5)
+% 8.) Showing data range selection for every image
+show_data_range = 0; % 0 = not show, 1 show
+
+% 9.) Run this MATLAB script (Press F5)
 
 % #######################################################################
 % #######################################################################
@@ -123,7 +126,7 @@ cd(DataLocation)                % move to the data directory
 cd(AlgorithmLocation);      % move to the algorithm directory
 % fitting by using linear regression with a slope_fit function
 [stiffness(1,itr), rsq(1,itr)] = slope_fit(ZDetector.*deflUnit, Force.*forceUnit,...
-    init_data_range, final_data_range);
+    init_data_range, final_data_range, show_data_range);
 
 % print out "current_index/total_index"
 fprintf(' data No#: %i /%i \n',itr,numPoint); 
