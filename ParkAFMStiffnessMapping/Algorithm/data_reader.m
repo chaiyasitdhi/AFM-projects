@@ -1,8 +1,8 @@
-% ################### Park AFM Stiffness Mapping 1.1 #####################
+% ################### Park AFM Stiffness Mapping 1.2 #####################
 % ####################### by Atitheb Chaiyasitdhi ########################
 % ########### King's Mongkut University of Technology Thonburi ###########
 % ################### create : 21-09-2015 ################################
-% ################### update : 01-12-2015 ################################
+% ################### update : 10-12-2015 ################################
 
 clear
 clc
@@ -17,7 +17,7 @@ clc
 % 2.) Specify a directory of point data 
 % CAUTION! this directory must have only point data files, info file and
 % image reference file!
-DataLocation = ['/home/theb/Documents/ubeTestData/S4/'];
+DataLocation = ['/home/theb/Downloads/S1/'];
 
 % 3.) Specify a directory of MATLAB scripts
 AlgorithmLocation = ['/home/theb/Documents/ParkAFMStiffnessMapping/Algorithm/'];  
@@ -86,7 +86,8 @@ File = dir('*.txt');    % acquire filenames with *.txt
 index_count = 1;
 
 for itr = 1:length({File.name})
-    if ~isempty( regexp(File(itr).name,'^^S\d{1}\.tiff_info\.txt','match') )
+    %if ~isempty( regexp(File(itr).name,'^^S\d{1}\.tiff_info\.txt','match') )
+    if ~isempty( regexp(File(itr).name,'.+\.tiff_info\.txt','match') )    
         image_ref_filename = File(itr).name;
     else
         Filename{itr} = File(itr).name;
@@ -192,3 +193,11 @@ c2 = colorbar(); caxis([0 1]); ylabel(c2, 'A.U.');
 % #######################################################################
 % #######################################################################
 
+% modified stiffness for export
+stiffness_export = abs(stiffness');
+
+% save "stiffness" into a text file.
+fileID = fopen('stiffness_export.txt', 'a');
+fprintf(fileID, '%s\n', 'Stiffness (N/m)');
+fprintf(fileID, '%f\n', stiffness_export);
+fclose(fileID);
