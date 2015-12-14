@@ -1,4 +1,4 @@
-function [E R2 CP_fit_1] = CPD(z,defl,k,G,nu,model_geo,model_para)
+function [sE sR2 CP_fit_1] = CPD(z,defl,k,G,nu,model_geo,model_para, stack)
  
 %%_______________________________________________________________________%%
 % CPD function is a MATLAB function based on the Contact Point Detection 
@@ -35,11 +35,11 @@ if nargin == 0
     return
 end
   
-if all(z) == 0 && all(defl) == 0
-    E = 0;
-    R2 = 0;
-    CP_fit_1 = 0;
-end
+% if all(z) == 0 && all(defl) == 0
+%     sE = NaN;
+%     sR2 = NaN;
+%     CP_fit_1 = NaN;
+% end
 
 % % Convert data to nanometers and correct for constant compliance
 z = z.*10^9;                    % [=] nm
@@ -60,27 +60,30 @@ points = [1:length(z)]';
 fit_points = polyfit(points,z,1);
 slope = abs(fit_points(1));             % slope [=] nm/point
  
-% Zero the deflection 
-% First define a range of data (first 40%)
-zero_defl_range = [z(1:round(0.4*length(z))) defl(1:round(0.4*length(z)))];
-% Fit a line to this data
-zero_defl_fit = polyfit(zero_defl_range(:,1),zero_defl_range(:,2),1);
+
+% % Zero the deflection 
+% % First define a range of data (first 40%)
+% zero_defl_range = [z(1:round(0.2*length(z))) defl(1:round(0.4*length(z)))];
+% % Fit a line to this data
+% zero_defl_fit = polyfit(zero_defl_range(:,1),zero_defl_range(:,2),1);
+%  
+% % Calculate the line for all data and subtracts the line from data
+% zero_defl_eval = zero_defl_fit(1).*z + zero_defl_fit(2);
+% zero_defl = defl - zero_defl_eval;
  
-% Calculate the line for all data and subtracts the line from data
-zero_defl_eval = zero_defl_fit(1).*z + zero_defl_fit(2);
-zero_defl = defl - zero_defl_eval;
- 
+zero_defl = defl;
+
 % Zero separation
 % Find the min and max deflection values
 maxDefl = z(zero_defl == max(zero_defl));
 minDefl = z(zero_defl == min(zero_defl));
 
-if size(maxDefl,1) == 0
-   E = 0;
-   R2 = 0;
-   CP_fit_1=0;
-   return
-end
+% if size(maxDefl,1) == 0
+%    sE = NaN;
+%    sR2 = NaN;
+%    CP_fit_1=NaN;
+%    return
+% end
 
 % Take the average of the min and max and define separation
 avg_MinMax = mean([maxDefl(end) minDefl(end)]);
@@ -92,19 +95,24 @@ force = zero_defl.*k./1000;                 % force [=] nN
  
 % Find the approximate contact point by detecting threshold level
 % Take average and standard deviation of initial portion of data
-avg = mean(force(1:round(0.4*length(zero_sep))));
-stdev = std(force(1:round(0.4*length(zero_sep))));
+avg = mean(force(1:round(0.2*length(zero_sep))));
+stdev = std(force(1:round(0.2*length(zero_sep))));
+P = 0;
 for i = 20:length(zero_sep)
     if force(i) < avg + G*stdev
         P = i;
     end
+    if P == 0 && i == length(zero_sep)
+        P = 20;
+    end
 end
-if exist('P','var') == 0
-   E = 0;
-   R2 = 0;
-   CP_fit_1=0;
-   return
-end
+
+% if exist('P','var') == 0
+%    sE = 0;
+%    sR2 = 0;
+%    CP_fit_1=0;
+%    return
+% end
 
 % Define the Hertz model 
 if strcmp(model_geo,'sphere') == 1
@@ -136,17 +144,19 @@ Ini_guess = 50/10^6;                % Initial modulus guess 50 kPa
 slope_fit = polyfit(zero_sep(P:end),force(P:end),1);
 slope_a = slope_fit(1);                       % [=] nN/nm
  
-% Define the indentation length based on a measure of how stiff the sample
-% is
-if slope_a > -0.1 && slope_a < -0.01
-    ub = 100;            % ub is the indentation length(upper bound) [=] nm 
-elseif slope_a < -0.1
-    ub = 50;
-elseif slope_a < -0.001 && slope_a > -0.01
-    ub = 200;
-else
-    ub = 100;
-end
+% % % Define the indentation length based on a measure of how stiff the sample
+% % % is
+% % if slope_a > -0.1 && slope_a < -0.01
+% %     ub = 100;            % ub is the indentation length(upper bound) [=] nm 
+% % elseif slope_a < -0.1
+% %     ub = 50;
+% % elseif slope_a < -0.001 && slope_a > -0.01
+% %     ub = 200;
+% % else
+% %     ub = 100;
+% % end
+
+ub = zero_sep(end);
 
 % Check how much data is after the approximate contact point
 % This check is to ensure that the indentation length defined does not 
@@ -158,43 +168,68 @@ if nanometers_remaining < ub
 end
  
 % Identify an initial fit region using the approximate contact point P
-X = zero_sep(P:P+floor(ub/slope));  % X and Y are the data set for the fit
-Y = force(P:P+floor(ub/slope));
+% X = zero_sep(P:P+floor(ub/slope));  % X and Y are the data set for the fit
+% Y = force(P:P+floor(ub/slope));
+
+X = zero_sep(P:end);  % X and Y are the data set for the fit
+Y = force(P:end);
 guess = [Ini_guess zero_sep(P)];
 
+% try 
     S = nlinfit(X,Y,f,guess);       % Perform non-linear fit for CP
     E_fit_1 = S(1)*10^6;            % This value of E is discarded
     CP_fit_1 = S(2);                % This is the fitted CP [=] nm
+% catch ME
+%     if ME.identifier == 'stats:nlinfit:NoUsableObservations'
+%         sE = NaN;
+%         sR2 = NaN;
+%         CP_fit_1 = NaN;
+%         return 
+%     end
+% end
 
-if isnan(CP_fit_1)
-   E = 0;
-   R2 = 0;
-   CP_fit_1 = 0;
-   return
-elseif or(CP_fit_1 >= max(zero_sep), CP_fit_1 < min(zero_sep))
-   E = 0;
-   R2 = 0;
-   CP_fit_1 = 0;
-   return
-end
+% if isnan(CP_fit_1)
+%    sE = 0;
+%    sR2 = 0;
+%    CP_fit_1 = 0;
+%    return
+% elseif or(CP_fit_1 >= max(zero_sep), CP_fit_1 < min(zero_sep))
+%    sE = 0;
+%    sR2 = 0;
+%    CP_fit_1 = 0;
+%    return
+% end
 
 % Define indentation
+
+
 I = zero_sep - CP_fit_1;    % I = indentation [=] nm
 for i = 1:length(I)-1
     if abs(zero_sep(i) - CP_fit_1) < abs(zero_sep(i+1) - CP_fit_1)
         loc = i;
     break
     end
+    if i == length(I)-1
+        loc = 1;
+    end
 end
+
+
 force_zero = force - force(loc);
 
 % Define the fit region as the same indentation length used previously
-X_1 = I(loc:loc+floor(ub/slope));
-Y_1 = force_zero(loc:loc+floor(ub/slope));
+% X_1 = I(loc:loc+floor(ub/slope));
+% Y_1 = force_zero(loc:loc+floor(ub/slope));
+
+X_1 = I(loc:end);
+Y_1 = force_zero(loc:end);
 guess_1 = Ini_guess;
-Q = nlinfit(X_1,Y_1,f_1,guess_1);   % perform the non-linear fit
-E_fit_2 = Q(1)*10^6;
-E = E_fit_2;    % E is the final reported elastic modulus [=] kPa
+
+[sE, sR2] = stackCPD(X_1, Y_1, f_1, guess_1, stack);
+
+% % Q = nlinfit(X_1,Y_1,f_1,guess_1);   % perform the non-linear fit
+% % E_fit_2 = Q(1)*10^6;
+% % E = E_fit_2;    % E is the final reported elastic modulus [=] kPa
  
 %Plot force versus indentation and the Hertz model fit
 % figure(6);
@@ -207,11 +242,14 @@ E = E_fit_2;    % E is the final reported elastic modulus [=] kPa
 %plot(I(loc),force_zero(loc),'rx','MarkerSize',10)
 %plot(X_1,Y_1,'bo');
 % Plot the Hertz model for the indentation range
-fit_val_1 = feval(f_1,E_fit_2/10^6,X_1);
-% % Calculate an R^2 value for the fit
-SSres = sum((Y_1 - fit_val_1).^2);
-SStot = (length(Y_1)-1)*var(Y_1);
-R2 = 1 - SSres/SStot;
+
+
+% % fit_val_1 = feval(f_1,E_fit_2/10^6,X_1);
+% % % % Calculate an R^2 value for the fit
+% % SSres = sum((Y_1 - fit_val_1).^2);
+% % SStot = (length(Y_1)-1)*var(Y_1);
+% % R2 = 1 - SSres/SStot;
+
 
 % plot(X_1,fit_val_1,'r-')
 % axis([-ub-50 10 -1 max(force)]);
@@ -222,5 +260,10 @@ R2 = 1 - SSres/SStot;
 %     ' \nu:' num2str(nu)]});
 %  
 % End of code
+
+
+
+
+
 end
 

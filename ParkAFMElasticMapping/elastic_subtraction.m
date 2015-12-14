@@ -1,4 +1,4 @@
-function [best_elastic R2 real_con]= elastic_subtraction(ZDetector,Force)
+function [sbest_elastic sR2 real_con]= elastic_subtraction(ZDetector,Force, stack)
 % ################# Elastic Modulus Extraction ############################
 % ################# Atitheb Chaiyasitdhi, UPDATED: 17-12-2014 #############
 % Here is the algorithm for extracting elastic modulus of data obtained 
@@ -39,6 +39,7 @@ subtF = rawforce - [median(int_def).*ones(n_data/2,1)];  %subtract the data
 % ## Find the Initial Contact Point ##
 initial_contact = contact_estimate(Zdist,subtF);    % initial contact point
 real_con = contact_estimate(rawZpost,rawforce);
+
 if isempty(real_con)
     real_con = NaN;
 else
@@ -50,16 +51,16 @@ end
 % Contact Parameters
 
 if isempty(initial_contact)
-    best_elastic = 0;
-    R2 = 0;
-    CP_fit_1 = 0;
-    return
+     sbest_elastic = NaN;
+      sR2 = NaN;
+      real_con = NaN;
+      return
 end
 
 lowerb_contact = initial_contact(1);
 
-[best_elastic R2 CP_fit_1] = CPD(Zdist,subtF,spring_con,5,v,'cone',face_angle);
-%[best_elastic R2 ub] = CPD(rawZpost,rawforce,spring_con,5,v,'cone',15);
+
+[sbest_elastic, sR2, CP_fit_1] = CPD(rawZpost,rawforce,spring_con,5,v,'cone',15,stack);
 
 %upperb_contact = in_depth*10^-9; % Hertz model only reliable within 10% of 
                             % the sample thickness
